@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarketPulse — Мониторинг цен и конкурентов на маркетплейсах</title>
+
+
+<script>
+    // Header scroll effect
+    const header = document.getElementById('header');
+    window.addEventListener('scroll', () => {
+        header.classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    // Mobile menu
+    const hamburger = document.getElementById('hamburger');
+    const mobileMenu = document.getElementById('mobileMenu');
+    hamburger.addEventListener('click', () => {
+        mobileMenu.classList.toggle('open');
+    });
+    mobileMenu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => mobileMenu.classList.remove('open'));
+    });
+
+    // FAQ accordion
+    document.querySelectorAll('.faq-question').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.parentElement;
+            const answer = item.querySelector('.faq-answer');
+            const isOpen = item.classList.contains('active');
+
+            // Close all
+            document.querySelectorAll('.faq-item').forEach(i => {
+                i.classList.remove('active');
+                i.querySelector('.faq-answer').style.maxHeight = '0';
+            });
+
+            // Open clicked
+            if (!isOpen) {
+                item.classList.add('active');
+                answer.style.maxHeight = answer.scrollHeight + 'px';
+            }
+        });
+    });
+
+    // Smooth reveal animation
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.feature-card, .step, .price-card, .testimonial-card').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(el);
+    });
+</script>
+
+</body>
+</html>
