@@ -1,4 +1,14 @@
-const Feat_grid = () =>{
+import { useAnimateOnScroll } from '../../hooks/useAnimateOnScroll';
+
+const Feat_grid = (props) =>{
+
+    const ref = useAnimateOnScroll({
+        threshold: 0.1,
+        animateClass: 'is-visible',
+        // Опционально: задержка для каскадной анимации
+    });
+
+
     return(
         <div className="features-grid">
             <div className="feature-card">

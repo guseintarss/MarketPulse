@@ -1,10 +1,33 @@
 import Mobile_menu from './Mobile_menu'
+import { useState, useEffect } from 'react';
 
-const Header = () => {
+const Header = (props) => {
+    const [isScrolled, setIsScrolled] = useState(false);
+    const brandName = 'MarketPulse'
 
+
+    useEffect(() => {
+        const handleScroll = () => {
+        // Проверяем позицию скролла
+        setIsScrolled(window.scrollY > 20);
+        };
+
+        // Добавляем слушатель
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        
+        // Проверяем при монтировании (если страница уже проскроллена)
+        handleScroll();
+        
+        // Cleanup: убираем слушатель при размонтировании
+        return () => {
+        window.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
     const mobileClick = () =>{
         mobileMenu.classList.toggle('open');
     }
+
+
 
     return(
         <header className="header" id="header">
@@ -12,7 +35,7 @@ const Header = () => {
                 <nav className="nav">
                     <a href="#" className="logo">
                         <div className="logo-icon">⚡</div>
-                        MarketPulse
+                        {brandName}
                     </a>
                     <ul className="nav-links">
                         <li><a href="#features">Возможности</a></li>
