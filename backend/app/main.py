@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import uvicorn
 from fastapi.routing import APIRouter
-from core import config
+from api.hendlers import user_router
 
 
 
