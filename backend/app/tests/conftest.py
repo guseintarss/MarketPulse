@@ -3,8 +3,8 @@ from typing import Generator, Any
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from starlette.testclient import TestClient
-from app.core import config
-import app
+from .core import config
+from app.main import app
 import os
 import asyncio  
 from app.core.session import get_db

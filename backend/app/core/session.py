@@ -3,7 +3,7 @@ from typing import Generator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from app.core import config
+from core import config
 
 
 engine = create_async_engine(config.REAL_DATABASE_URL, future=True, echo=True)
