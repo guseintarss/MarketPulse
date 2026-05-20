@@ -8,4 +8,6 @@ class Users(Base):
     __tablename__ = "users"
 
     username: Mapped[str]
-    email: Mapped[EmailStr]
+    surname: Mapped[str]
+    email: Mapped[str]
+    is_active: Mapped[bool]
