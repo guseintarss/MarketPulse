@@ -1,19 +1,13 @@
 from contextlib import asynccontextmanager
-from typing import Annotated
-from core.models import Base, db_helper
 import uvicorn
 from app.users.views import router as user_router
 from app.api_v1 import router as router_v1
-from fastapi import Body
 from fastapi import FastAPI
-from pydantic import BaseModel
-from pydantic import EmailStr
 from app.core.config import settings
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with db_helper.engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
 
 
