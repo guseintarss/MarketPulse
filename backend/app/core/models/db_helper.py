@@ -1,11 +1,11 @@
 from typing import Any, AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
-        create_async_engine,
-        async_sessionmaker,
-        async_scoped_session,
-        AsyncSession,
-    )
+    create_async_engine,
+    async_sessionmaker,
+    async_scoped_session,
+    AsyncSession,
+)
 from sqlalchemy.orm import sessionmaker
 
 from asyncio import current_task
@@ -34,14 +34,10 @@ class DatabaseHelper:
         return session
 
     async def session_dependency(self) -> AsyncSession:
-        
+
         async with self.session_factory() as session:
             yield session
             await session.close()
 
-         
 
-
-
-
-db_helper = DatabaseHelper(url=settings.db_url, echo=settings.db_echo)
+db_helper = DatabaseHelper(url=settings.db.url, echo=settings.db.echo)
