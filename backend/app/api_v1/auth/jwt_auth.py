@@ -50,7 +50,12 @@ def get_current_token_payload(
     credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
 ) -> UserShema:
     token = credentials.credentials
-    payload = auth_utils.decode_jwt(token)
+    try:
+        payload = auth_utils.decode_jwt(token)
+    except InvalidTokenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token error"
+        )
     return payload
 
 
