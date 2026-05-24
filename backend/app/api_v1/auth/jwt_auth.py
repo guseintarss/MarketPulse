@@ -1,8 +1,12 @@
 from users.schemas import UserShema
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Form, HTTPException, status
-
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from auth import utils as auth_utils
+from jwt.exceptions import InvalidTokenError
+
+
+http_bearer = HTTPBearer()
 
 router = APIRouter(prefix="/jwt", tags=["jwt"])
 Bob = UserShema(
@@ -42,6 +46,33 @@ def auth_user_validate(
     return user
 
 
+def get_current_token_payload(
+    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+) -> UserShema:
+    token = credentials.credentials
+    payload = auth_utils.decode_jwt(token)
+    return payload
+
+
+def get_current_auth_user(
+    payload: dict = Depends(get_current_token_payload),
+) -> UserShema:
+    username: str | None = payload.get("sub")
+    if user := users_db.get(username):
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="token invalid"
+    )
+
+
+def get_current_active_user(
+    user: UserShema = Depends(get_current_auth_user),
+):
+    if user.is_active:
+        return user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="user inactive")
+
+
 @router.post("/login", response_model=TokenInfo)
 def auth_user_jwt(
     user: UserShema = Depends(auth_user_validate),
@@ -59,5 +90,8 @@ def auth_user_jwt(
 
 
 @router.get("/users/me/")
-def auth_user_chek_self_info(user: UserShema = Depends()):
-    pass
+def auth_user_chek_self_info(user: UserShema = Depends(get_current_active_user)):
+    return {
+        "username": user.username,
+        "email": user.email,
+    }
