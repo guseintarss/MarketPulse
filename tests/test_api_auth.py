@@ -34,52 +34,140 @@ class TestBasicAuth:
 
 
 class TestJWTAuth:
-    def test_jwt_login_valid(self, client, auth_credentials):
-        response = client.post("/api/v1/jwt/login", data=auth_credentials)
-        assert response.status_code == 200
-        data = response.json()
+    def _register_user(
+        self, client, username="testuser", password="testpass", email="test@example.com"
+    ):
+        return client.post(
+            "/api/v1/jwt/register",
+            json={
+                "username": username,
+                "password": password,
+                "email": email,
+            },
+        )
+
+    def test_register_user(self, client):
+        resp = self._register_user(client)
+        assert resp.status_code == 201
+        data = resp.json()
+        assert "access_token" in data
+        assert data["token_type"] == "Bearer"
+
+    def test_register_duplicate_username(self, client):
+        self._register_user(client, username="alice")
+        resp = self._register_user(client, username="alice")
+        assert resp.status_code == 409
+
+    def test_register_invalid_data(self, client):
+        resp = client.post(
+            "/api/v1/jwt/register",
+            json={
+                "username": "ab",
+                "password": "12",
+                "email": "not-email",
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_jwt_login_valid(self, client):
+        self._register_user(
+            client, username="bob", password="qwerty", email="bob@test.com"
+        )
+        resp = client.post(
+            "/api/v1/jwt/login",
+            data={
+                "username": "bob",
+                "password": "qwerty",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
         assert "access_token" in data
         assert data["token_type"] == "Bearer"
 
     def test_jwt_login_invalid_username(self, client):
-        response = client.post("/api/v1/jwt/login", data={
-            "username": "nonexistent",
-            "password": "qwerty",
-        })
-        assert response.status_code == 401
+        resp = client.post(
+            "/api/v1/jwt/login",
+            data={
+                "username": "nonexistent",
+                "password": "qwerty",
+            },
+        )
+        assert resp.status_code == 401
 
     def test_jwt_login_invalid_password(self, client):
-        response = client.post("/api/v1/jwt/login", data={
-            "username": "Bob",
-            "password": "wrongpassword",
-        })
-        assert response.status_code == 401
-
-    def test_jwt_login_empty_password(self, client):
-        response = client.post("/api/v1/jwt/login", data={
-            "username": "Bob",
-            "password": "",
-        })
-        assert response.status_code in (401, 422)
+        self._register_user(client, username="charlie", password="secret")
+        resp = client.post(
+            "/api/v1/jwt/login",
+            data={
+                "username": "charlie",
+                "password": "wrongpassword",
+            },
+        )
+        assert resp.status_code == 401
 
     def test_jwt_login_missing_fields(self, client):
-        response = client.post("/api/v1/jwt/login")
-        assert response.status_code == 422
+        resp = client.post("/api/v1/jwt/login")
+        assert resp.status_code == 422
 
-    def test_jwt_token_format(self, client, auth_credentials):
-        response = client.post("/api/v1/jwt/login", data=auth_credentials)
-        token = response.json()["access_token"]
+    def test_jwt_token_format(self, client):
+        self._register_user(client, username="tokenuser", password="testpass")
+        resp = client.post(
+            "/api/v1/jwt/login",
+            data={
+                "username": "tokenuser",
+                "password": "testpass",
+            },
+        )
+        token = resp.json()["access_token"]
         parts = token.split(".")
         assert len(parts) == 3
 
-    def test_jwt_token_decodes(self, client, auth_credentials):
+    def test_jwt_token_decodes(self, client):
+        self._register_user(
+            client, username="decodeuser", password="testpass", email="decode@test.com"
+        )
+        resp = client.post(
+            "/api/v1/jwt/login",
+            data={
+                "username": "decodeuser",
+                "password": "testpass",
+            },
+        )
         from auth.utils import decode_jwt
-        response = client.post("/api/v1/jwt/login", data=auth_credentials)
-        token = response.json()["access_token"]
-        decoded = decode_jwt(token)
-        assert decoded["sub"] == "Bob"
-        assert decoded["username"] == "Bob"
 
-    def test_jwt_users_me_missing_params(self, client):
-        response = client.get("/api/v1/jwt/users/me/")
-        assert response.status_code == 422
+        token = resp.json()["access_token"]
+        decoded = decode_jwt(token)
+        assert decoded["sub"] == "decodeuser"
+
+    def test_jwt_users_me_authenticated(self, client):
+        self._register_user(client, username="meuser", password="testpass")
+        login_resp = client.post(
+            "/api/v1/jwt/login",
+            data={
+                "username": "meuser",
+                "password": "testpass",
+            },
+        )
+        token = login_resp.json()["access_token"]
+        resp = client.get(
+            "/api/v1/jwt/users/me/",
+            headers={
+                "Authorization": f"Bearer {token}",
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["username"] == "meuser"
+
+    def test_jwt_users_me_unauthenticated(self, client):
+        resp = client.get("/api/v1/jwt/users/me/")
+        assert resp.status_code in (401, 403)
+
+    def test_jwt_users_me_invalid_token(self, client):
+        resp = client.get(
+            "/api/v1/jwt/users/me/",
+            headers={
+                "Authorization": "Bearer invalidtoken",
+            },
+        )
+        assert resp.status_code == 401

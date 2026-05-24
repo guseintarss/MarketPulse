@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from asyncio import current_task
 
-from backend.app.core.config import settings
+from app.core.config import settings
 
 
 class DatabaseHelper:

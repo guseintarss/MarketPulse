@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
-
+import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String
+from sqlalchemy import String, Boolean
 from .base import Base
 
 if TYPE_CHECKING:
@@ -9,7 +9,12 @@ if TYPE_CHECKING:
 
 
 class User(Base):
-    username: Mapped[str] = mapped_column(String(55), unique=True, nullable=True)
+    username: Mapped[str] = mapped_column(String(55), unique=True)
+    email: Mapped[str | None]
+    password: Mapped[bytes]
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=sa.text("true")
+    )
 
     profile: Mapped["Profile"] = relationship(back_populates="user")
 

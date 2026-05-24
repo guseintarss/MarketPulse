@@ -14,12 +14,13 @@ for p in [str(BACKEND_DIR), str(BACKEND_APP_DIR), str(PROJECT_DIR)]:
         sys.path.insert(0, p)
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from core.models import Base
+from app.core.models import Base
 
 
 @pytest.fixture(scope="session")
 def event_loop():
     import asyncio
+
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
@@ -71,7 +72,8 @@ def client():
         async with session_factory() as session:
             yield session
 
-    from core.models import db_helper
+    from app.core.models import db_helper
+
     app.dependency_overrides[db_helper.session_dependency] = override_session_dependency
 
     with TestClient(app) as c:

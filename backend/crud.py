@@ -3,7 +3,7 @@ import asyncio
 from sqlalchemy import select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models import db_helper, User, Profile
+from app.core.models import db_helper, User, Profile
 
 
 async def create_user(session: AsyncSession, username: str) -> User:

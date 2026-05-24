@@ -1,51 +1,55 @@
 import Mobile_menu from './Mobile_menu'
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 
 const Header = (props) => {
     const [isScrolled, setIsScrolled] = useState(false);
+    const { user, logout } = useAuth();
     const brandName = 'MarketPulse'
-
 
     useEffect(() => {
         const handleScroll = () => {
-        // Проверяем позицию скролла
         setIsScrolled(window.scrollY > 20);
         };
-
-        // Добавляем слушатель
         window.addEventListener('scroll', handleScroll, { passive: true });
-        
-        // Проверяем при монтировании (если страница уже проскроллена)
         handleScroll();
-        
-        // Cleanup: убираем слушатель при размонтировании
         return () => {
         window.removeEventListener('scroll', handleScroll);
         };
     }, []);
+
     const mobileClick = () =>{
         mobileMenu.classList.toggle('open');
     }
-
-
 
     return(
         <header className="header" id="header">
             <div className="container">
                 <nav className="nav">
-                    <a href="#" className="logo">
+                    <Link to="/" className="logo">
                         <div className="logo-icon">⚡</div>
                         {brandName}
-                    </a>
+                    </Link>
                     <ul className="nav-links">
-                        <li><a href="#features">Возможности</a></li>
-                        <li><a href="#how">Как работает</a></li>
-                        <li><a href="#pricing">Тарифы</a></li>
-                        <li><a href="#faq">FAQ</a></li>
+                        <li><a href="/#features">Возможности</a></li>
+                        <li><a href="/#how">Как работает</a></li>
+                        <li><a href="/#pricing">Тарифы</a></li>
+                        <li><a href="/#faq">FAQ</a></li>
+                        {user && <li><Link to="/dashboard">Дашборд</Link></li>}
                     </ul>
                     <div className="nav-cta">
-                        <a href="#" className="btn btn-outline">Войти</a>
-                        <a href="#pricing" className="btn btn-primary">Попробовать бесплатно</a>
+                        {user ? (
+                            <>
+                                <span style={{ fontWeight: 600, color: '#6C3AED' }}>{user.username}</span>
+                                <button onClick={logout} className="btn btn-outline" style={{ padding: '8px 20px', fontSize: '0.9rem', cursor: 'pointer' }}>Выйти</button>
+                            </>
+                        ) : (
+                            <>
+                                <Link to="/login" className="btn btn-outline">Войти</Link>
+                                <Link to="/register" className="btn btn-primary">Регистрация</Link>
+                            </>
+                        )}
                     </div>
                     <button className="hamburger" id="hamburger" onClick={mobileClick} aria-label="Меню">
                         <span></span><span></span><span></span>

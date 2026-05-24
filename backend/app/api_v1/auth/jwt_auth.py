@@ -1,102 +1,132 @@
-from users.schemas import UserShema
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Form, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from auth import utils as auth_utils
+from sqlalchemy.ext.asyncio import AsyncSession
 from jwt.exceptions import InvalidTokenError
 
+from app.auth import utils as auth_utils
+from app.core.models import db_helper
+from . import crud
+from .schemas import RegisterUser, TokenInfo, UserInfo
 
 http_bearer = HTTPBearer()
-
 router = APIRouter(prefix="/jwt", tags=["jwt"])
-Bob = UserShema(
-    username="Bob",
-    password=auth_utils.hash_password("qwerty"),
-    email="Bob@gmail.com",
-)
-
-users_db: dict[str, UserShema] = {Bob.username: Bob}
 
 
-class TokenInfo(BaseModel):
-    access_token: str
-    token_type: str
-
-
-def auth_user_validate(
-    username: str = Form(),
-    password: str = Form(),
-):
-    unauthed_ext = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid username or password "
-    )
-    if not (user := users_db.get(username)):
-        raise unauthed_ext
+async def validate_auth_user(
+    username: str,
+    password: str,
+    session: AsyncSession,
+) -> UserInfo:
+    user = await crud.get_user_by_username(session=session, username=username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid username or password",
+        )
     if not auth_utils.validate_password(
         password=password,
         hashed_password=user.password,
     ):
-        raise unauthed_ext
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid username or password",
+        )
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="user inactive",
         )
+    return UserInfo.model_validate(user)
 
-    return user
 
-
-def get_current_token_payload(
+async def get_current_token_payload(
     credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
-) -> UserShema:
+) -> dict:
     token = credentials.credentials
     try:
         payload = auth_utils.decode_jwt(token)
-    except InvalidTokenError as e:
+    except InvalidTokenError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token error"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token error",
         )
     return payload
 
 
-def get_current_auth_user(
+async def get_current_auth_user(
     payload: dict = Depends(get_current_token_payload),
-) -> UserShema:
+    session: AsyncSession = Depends(db_helper.session_dependency),
+) -> UserInfo:
     username: str | None = payload.get("sub")
-    if user := users_db.get(username):
-        return user
+    user = await crud.get_user_by_username(session=session, username=username)
+    if user:
+        return UserInfo.model_validate(user)
     raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="token invalid"
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="token invalid",
     )
 
 
-def get_current_active_user(
-    user: UserShema = Depends(get_current_auth_user),
+async def get_current_active_user(
+    user: UserInfo = Depends(get_current_auth_user),
 ):
     if user.is_active:
         return user
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="user inactive")
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="user inactive",
+    )
 
 
-@router.post("/login", response_model=TokenInfo)
-def auth_user_jwt(
-    user: UserShema = Depends(auth_user_validate),
+@router.post("/register", response_model=TokenInfo, status_code=status.HTTP_201_CREATED)
+async def register_user(
+    user_in: RegisterUser,
+    session: AsyncSession = Depends(db_helper.session_dependency),
 ):
+    existing = await crud.get_user_by_username(
+        session=session, username=user_in.username
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="username already exists",
+        )
+    user = await crud.create_user(
+        session=session,
+        username=user_in.username,
+        email=user_in.email,
+        password=user_in.password,
+        is_active=user_in.is_active,
+    )
     jwt_payload = {
         "sub": user.username,
         "username": user.username,
         "email": user.email,
     }
     access_token = auth_utils.encode_jwt(jwt_payload)
-    return TokenInfo(
-        access_token=access_token,
-        token_type="Bearer",
+    return TokenInfo(access_token=access_token, token_type="Bearer")
+
+
+@router.post("/login", response_model=TokenInfo)
+async def auth_user_jwt(
+    username: str = Form(),
+    password: str = Form(),
+    session: AsyncSession = Depends(db_helper.session_dependency),
+):
+    user = await validate_auth_user(
+        username=username, password=password, session=session
     )
-
-
-@router.get("/users/me/")
-def auth_user_chek_self_info(user: UserShema = Depends(get_current_active_user)):
-    return {
+    jwt_payload = {
+        "sub": user.username,
         "username": user.username,
         "email": user.email,
     }
+    access_token = auth_utils.encode_jwt(jwt_payload)
+    return TokenInfo(access_token=access_token, token_type="Bearer")
+
+
+@router.get("/users/me/", response_model=UserInfo)
+async def auth_user_check_self_info(
+    user: UserInfo = Depends(get_current_active_user),
+):
+    return user
