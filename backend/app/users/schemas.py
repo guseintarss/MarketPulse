@@ -1,5 +1,4 @@
 from typing import Annotated
-
 from annotated_types import MaxLen
 from annotated_types import MinLen
 from pydantic import BaseModel, ConfigDict
@@ -18,3 +17,4 @@ class UserShema(BaseModel):
     password: bytes
     email: EmailStr | None = None
     is_active: bool = True
+

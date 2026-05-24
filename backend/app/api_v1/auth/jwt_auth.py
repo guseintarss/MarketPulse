@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from jwt.exceptions import InvalidTokenError
 
@@ -8,7 +8,8 @@ from app.core.models import db_helper
 from . import crud
 from .schemas import RegisterUser, TokenInfo, UserInfo
 
-http_bearer = HTTPBearer()
+# http_bearer = HTTPBearer()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/jwt/login")
 router = APIRouter(prefix="/jwt", tags=["jwt"])
 
 
@@ -40,9 +41,9 @@ async def validate_auth_user(
 
 
 async def get_current_token_payload(
-    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+    token: str = Depends(oauth2_scheme),
 ) -> dict:
-    token = credentials.credentials
+    # token = credentials.credentials
     try:
         payload = auth_utils.decode_jwt(token)
     except InvalidTokenError:
@@ -127,6 +128,7 @@ async def auth_user_jwt(
 
 @router.get("/users/me/", response_model=UserInfo)
 async def auth_user_check_self_info(
+    payload: dict = Depends(get_current_token_payload),
     user: UserInfo = Depends(get_current_active_user),
 ):
     return user

@@ -1,8 +1,10 @@
 from typing import TYPE_CHECKING
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Boolean
+from sqlalchemy import String, Boolean, DateTime, func
 from .base import Base
+
+from datetime import datetime, timezone
 
 if TYPE_CHECKING:
     from .profile import Profile
@@ -15,6 +17,10 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=sa.text("true")
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now()
+)
 
     profile: Mapped["Profile"] = relationship(back_populates="user")
 
